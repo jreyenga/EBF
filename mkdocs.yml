@@ -1,5 +1,6 @@
 site_name: EBF — Elliptical Basis Functions
 site_description: Smooth surface interpolation for scattered engineering data
+site_url: https://jreyenga.github.io/EBF/
 repo_url: https://github.com/jreyenga/EBF
 
 theme:

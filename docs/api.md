@@ -9,6 +9,7 @@
         - fit
         - predict
         - get_nodes
+        - get_ellipsoids
         - save
         - load
 

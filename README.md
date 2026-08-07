@@ -378,6 +378,8 @@ python examples/make_docs_figures.py
 
 ## Documentation
 
+**[Read the documentation online →](https://jreyenga.github.io/EBF/)**
+
 | Page | Contents |
 |------|----------|
 | [`docs/algorithm_overview.md`](docs/algorithm_overview.md) | Plain-language guide to how EBF works |
