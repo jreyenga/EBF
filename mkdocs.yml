@@ -1,0 +1,53 @@
+site_name: EBF — Elliptical Basis Functions
+site_description: Smooth surface interpolation for scattered engineering data
+repo_url: https://github.com/jreyenga/EBF
+
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: indigo
+    accent: indigo
+  features:
+    - content.code.copy
+    - navigation.sections
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_source: false
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - tables
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Home: index.md
+  - Algorithm Overview: algorithm_overview.md
+  - Basis Functions: basis_functions.md
+  - Loss Types: loss_types.md
+  - Visualization: visualization.md
+  - API Reference: api.md
+  - Examples:
+    - RBF vs EBF: examples/rbf_vs_ebf.md
+    - Compressor Map: examples/compressor_map.md
+  - Design Notes:
+    - Conventions: design/CONVENTIONS.md
+    - Decisions (ADRs): design/DECISIONS.md
+    - Roadmap: design/ROADMAP.md
+    - Session Log: design/SESSION_LOG.md
+    - Smoothness Research: design/SMOOTHNESS.md

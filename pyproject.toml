@@ -1,0 +1,31 @@
+[project]
+name = "ebf"
+version = "0.1.0"
+description = "Elliptical Basis Function interpolation for scattered engineering data"
+license = {text = "MIT"}
+authors = [
+    {name = "jreyenga",email = "40841386+jreyenga@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "tensorflow (>=2.21.0,<3.0.0)",
+    "matplotlib (>=3.10.8,<4.0.0)",
+    "scipy (>=1.17.1,<2.0.0)",
+    "pandas (>=3.0.2,<4.0.0)",
+    "openpyxl (>=3.1.5,<4.0.0)",
+    "cmasher (>=1.9.2,<2.0.0) ; python_version >= \"3.11\" and python_version < \"4\"",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "mkdocs (>=1.6.1,<2.0.0)",
+    "mkdocs-material (>=9.7.6,<10.0.0)",
+    "mkdocstrings[python] (>=1.0.3,<2.0.0)",
+    "pytest (>=9.0.3,<10.0.0)"
+]
