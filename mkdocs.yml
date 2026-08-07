@@ -49,6 +49,7 @@ nav:
   - Design Notes:
     - Conventions: design/CONVENTIONS.md
     - Decisions (ADRs): design/DECISIONS.md
+    - Prior Art: design/PRIOR_ART.md
     - Roadmap: design/ROADMAP.md
     - Session Log: design/SESSION_LOG.md
     - Smoothness Research: design/SMOOTHNESS.md

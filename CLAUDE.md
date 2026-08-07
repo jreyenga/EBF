@@ -39,6 +39,7 @@ migration is complete and all legacy TF1 files have been deleted).
 | `docs/design/ROADMAP.md` | Status, open work, planned features, retained design notes |
 | `docs/design/CONVENTIONS.md` | Naming rules, shape notation, data contract |
 | `docs/design/DECISIONS.md` | Why architectural choices were made — check before changing anything |
+| `docs/design/PRIOR_ART.md` | Where EBF sits in the literature — read before making novelty claims |
 | `docs/design/SESSION_LOG.md` | Per-session decisions not captured in git history |
 | `docs/design/SMOOTHNESS.md` | Smoothness/noise research and implementation roadmap |
 | `mkdocs.yml` | MkDocs documentation site configuration |
