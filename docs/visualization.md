@@ -29,6 +29,7 @@ ax.scatter(x, y, c=SAMPLE_FACE, edgecolors=SAMPLE_EDGE)
 | `NODE_FACE` / `NODE_EDGE` | muted orange | EBF node positions (triangle marker) |
 | `POINT_FACE` / `POINT_EDGE` | mid blue | Scatter on white-background diagnostics |
 | `ACCENT` | muted orange-red | Threshold and limit reference lines |
+| `ERROR_CMAP` / `ERROR_SIZE` | `'Reds'` / 46 | Points shaded by absolute error (see the summary figure) |
 
 The constraint driving these choices: the surface colormap is a sequential
 blue ramp, so anything drawn *over* it must not be blue. Samples are white
@@ -124,6 +125,12 @@ becomes visible here:
 - **Outliers** stand apart from the cloud — useful for judging whether
   a robust loss (`loss_type='huber'` or `'tukey'`) is warranted
 
+Both plots accept `c`, `cmap` and `norm` to shade the markers by a
+per-point value instead of the flat style colour — that is how
+`summary_plot_3d()` puts every panel on one shared error scale. The
+contour plot takes the same thing as `data_color` / `data_cmap` /
+`data_norm` for its data overlay.
+
 ## 2-D Contour Plot
 
 For models with exactly two input dimensions, `ebf.contour_plot_2d()`
@@ -151,6 +158,7 @@ fig, ax = ebf.contour_plot_2d(
 | `alpha` | 0.9 | Fill opacity |
 | `show_data` | `True` | Overlay training points |
 | `show_nodes` | `False` | Overlay EBF node positions |
+| `data_color` | `None` | Per-point values to shade the data overlay by (with `data_cmap` / `data_norm`) |
 
 When `mask=True` (the default), `scipy.interpolate.griddata` with
 `method='linear'` is used to identify grid cells outside the convex hull
@@ -176,6 +184,16 @@ fig, axes = ebf.summary_plot_3d(
     show_nodes=True,
 )
 ```
+
+By default (`error_color=True`) every data point is shaded by its
+absolute error with the `'Reds'` colormap — darker means a worse fit —
+using one normalization shared by the contour, correlation and residual
+panels, with the colorbar down the right-hand edge. Because the scale is
+shared and anchored at zero, the same shade means the same error on every
+panel, so a point that stands out in the residual plot can be located on
+the map. The scale is set by the largest absolute error, so a single bad
+point will pale the rest; pass `error_color=False` for flat white markers
+instead, or `error_cmap` for a different ramp.
 
 Extra keyword arguments (`n_grid`, `mask`, `cmap`, `show_nodes`, …) are
 forwarded to `contour_plot_2d()`. The returned `axes` array holds the

@@ -179,6 +179,7 @@ ebf.summary_plot_3d(
     zlabel='Efficiency, eta',
     loss_threshold=0.05,
     show_nodes=True,
+    error_color=True,        # the default — shade points by |error|
 )
 ```
 
@@ -194,6 +195,12 @@ worth asking of any fit:
   it against the 1:1 line.
 - **Convergence** — training stopped at 11,783 of the 80,000 requested
   steps when the loss reached `loss_threshold=0.05`.
+
+Every data point is shaded by its absolute error, on one scale shared by
+all three data panels (colorbar on the far right).  That is what ties the
+panels together: the outlier the residual plot isolates is also the
+darkest marker on the map, in the low-flow, low-pressure-ratio corner.
+Pass `error_color=False` for flat white markers instead.
 
 Two of the nine nodes sit outside the plotted region. `contour_plot_2d`
 deliberately clamps the axes to the data bounds, so a node that drifts far

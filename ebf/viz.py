@@ -46,12 +46,22 @@ ACCENT = '#d1603d'         # reference lines that mark a limit or target
 GRID_LINE = 'black'        # contour lines drawn over the filled map
 GRID_ALPHA = 0.3
 
+# Error-shaded variant: points are colored by |error| instead of a flat
+# fill, so the same red ramp carries the same meaning on every panel of a
+# summary figure.  Sequential red reads as "worse = darker" without a
+# legend, and stays distinct from the blue surface ramp underneath.  The
+# markers are drawn larger than the flat-fill ones because a small marker
+# gives the eye too little area to judge its shade.
+ERROR_CMAP = 'Reds'
+ERROR_SIZE = 46
+
 
 # ------------------------------------------------------------------
 # Correlation plot (any dimensionality)
 # ------------------------------------------------------------------
 
-def correlation_plot(y_true, y_pred, ax=None):
+def correlation_plot(y_true, y_pred, ax=None, *,
+                     c=None, cmap=None, norm=None):
     """Scatter plot of data vs prediction with 1:1 line and R².
 
     Parameters
@@ -62,6 +72,11 @@ def correlation_plot(y_true, y_pred, ax=None):
         Predicted values.
     ax : matplotlib.axes.Axes, optional
         Axes to draw on.  A new figure is created when *None*.
+    c : array-like, shape (n,), optional
+        Per-point values to color the markers by (e.g. absolute error).
+        Uses the flat style colour when *None*.
+    cmap, norm : optional
+        Colormap and normalization applied to *c*.
 
     Returns
     -------
@@ -81,8 +96,15 @@ def correlation_plot(y_true, y_pred, ax=None):
     slope, intercept, r_value, p_value, std_err = linregress(y_true, y_pred)
     r2 = r_value ** 2
 
-    ax.scatter(y_true, y_pred, c=POINT_FACE, edgecolors=POINT_EDGE,
-               linewidths=0.6, s=36, alpha=0.85, zorder=3)
+    if c is None:
+        ax.scatter(y_true, y_pred, c=POINT_FACE, edgecolors=POINT_EDGE,
+                   linewidths=0.6, s=36, alpha=0.85, zorder=3)
+    else:
+        # No alpha here — a translucent marker mixes with the white
+        # background and reads as a lower error than it is.
+        ax.scatter(y_true, y_pred, c=c, cmap=cmap, norm=norm,
+                   edgecolors=POINT_EDGE, linewidths=0.6, s=ERROR_SIZE,
+                   zorder=3)
     lo, hi = y_true.min(), y_true.max()
     ax.plot([lo, hi], [lo, hi], 'k--', zorder=2)
     ax.set_xlabel('Data')
@@ -96,7 +118,8 @@ def correlation_plot(y_true, y_pred, ax=None):
 # Residual-vs-predicted plot (any dimensionality)
 # ------------------------------------------------------------------
 
-def residual_plot(y_true, y_pred, ax=None):
+def residual_plot(y_true, y_pred, ax=None, *,
+                  c=None, cmap=None, norm=None):
     """Scatter plot of residuals against predictions with a zero line.
 
     Complements :func:`correlation_plot`: structure in this plot that
@@ -113,6 +136,11 @@ def residual_plot(y_true, y_pred, ax=None):
         Predicted values.
     ax : matplotlib.axes.Axes, optional
         Axes to draw on.  A new figure is created when *None*.
+    c : array-like, shape (n,), optional
+        Per-point values to color the markers by (e.g. absolute error).
+        Uses the flat style colour when *None*.
+    cmap, norm : optional
+        Colormap and normalization applied to *c*.
 
     Returns
     -------
@@ -132,8 +160,13 @@ def residual_plot(y_true, y_pred, ax=None):
 
     rmse = np.sqrt(np.mean(residuals ** 2))
 
-    ax.scatter(y_pred, residuals, c=POINT_FACE, edgecolors=POINT_EDGE,
-               linewidths=0.6, s=36, alpha=0.85, zorder=3)
+    if c is None:
+        ax.scatter(y_pred, residuals, c=POINT_FACE, edgecolors=POINT_EDGE,
+                   linewidths=0.6, s=36, alpha=0.85, zorder=3)
+    else:
+        ax.scatter(y_pred, residuals, c=c, cmap=cmap, norm=norm,
+                   edgecolors=POINT_EDGE, linewidths=0.6, s=ERROR_SIZE,
+                   zorder=3)
     ax.axhline(0.0, color='k', linestyle='--', zorder=2)
     ax.set_xlabel('Prediction')
     ax.set_ylabel('Residual (data - prediction)')
@@ -229,6 +262,7 @@ def contour_plot_2d(model, X_data, y_data=None, ax=None, *,
                     cmap=DEFAULT_CMAP, alpha=0.9,
                     xlabel=None, ylabel=None, zlabel=None,
                     show_data=True, show_nodes=False,
+                    data_color=None, data_cmap=None, data_norm=None,
                     clabel_fmt='$Z=%.2f$'):
     """Filled contour map for a 2-D input EBF model.
 
@@ -263,6 +297,14 @@ def contour_plot_2d(model, X_data, y_data=None, ax=None, *,
         Overlay training data points.  Default ``True``.
     show_nodes : bool, optional
         Overlay EBF node positions.  Default ``False``.
+    data_color : array-like, shape (n_points,), optional
+        Per-point values to color the data overlay by (e.g. absolute
+        error).  Uses the flat white marker face when *None*.
+    data_cmap, data_norm : optional
+        Colormap and normalization applied to *data_color*.  No colorbar
+        is drawn for it here — the caller owns that (see
+        :func:`summary_plot_3d`), since the axes already carry the
+        surface colorbar.
     clabel_fmt : str or None, optional
         Format string for contour labels.  ``None`` disables labels.
         Default ``'$Z=%.2f$'``.
@@ -327,9 +369,15 @@ def contour_plot_2d(model, X_data, y_data=None, ax=None, *,
     # Both must contrast against the sequential blue fill; see the shared
     # style block at the top of this module.
     if show_data:
-        ax.scatter(X_data[:, 0], X_data[:, 1], c=SAMPLE_FACE,
-                   s=SAMPLE_SIZE, edgecolors=SAMPLE_EDGE, linewidths=0.8,
-                   zorder=3, label='data')
+        if data_color is None:
+            ax.scatter(X_data[:, 0], X_data[:, 1], c=SAMPLE_FACE,
+                       s=SAMPLE_SIZE, edgecolors=SAMPLE_EDGE,
+                       linewidths=0.8, zorder=3, label='data')
+        else:
+            ax.scatter(X_data[:, 0], X_data[:, 1], c=data_color,
+                       cmap=data_cmap, norm=data_norm,
+                       s=ERROR_SIZE, edgecolors=SAMPLE_EDGE,
+                       linewidths=0.8, zorder=3, label='data')
 
     if show_nodes:
         nodes = model.get_nodes()
@@ -362,6 +410,7 @@ def contour_plot_2d(model, X_data, y_data=None, ax=None, *,
 def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
                     loss_threshold=None,
                     xlabel=None, ylabel=None, zlabel=None,
+                    error_color=True, error_cmap=ERROR_CMAP,
                     **contour_kwargs):
     """One-figure fit summary for 3-D data (two inputs, one output).
 
@@ -371,6 +420,12 @@ def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
     residual-vs-predicted plot (:func:`residual_plot`), and the
     training loss curve (:func:`convergence_plot`) are stacked in a
     narrower column on the right.
+
+    By default every data point is shaded by its absolute error on one
+    shared red scale, so the same shade means the same error on all
+    three data panels and a bad point can be traced from the residual
+    plot back to where it sits on the map (``error_color=False``
+    restores flat markers).
 
     Parameters
     ----------
@@ -387,6 +442,13 @@ def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
         panel (pass the same value given to ``fit()``).
     xlabel, ylabel, zlabel : str, optional
         Axis / colorbar labels for the contour panel.
+    error_color : bool, optional
+        Shade every data point by its absolute error — same values, same
+        colormap and same scale on all three data panels, with a single
+        shared colorbar down the right-hand edge.  Default ``True``;
+        pass ``False`` for flat-filled markers.
+    error_cmap : str, optional
+        Colormap for the *error_color* shading.  Default ``'Reds'``.
     **contour_kwargs
         Extra keyword arguments forwarded to :func:`contour_plot_2d`
         (e.g. ``n_grid``, ``mask``, ``cmap``, ``show_nodes``).
@@ -398,6 +460,8 @@ def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
         ``(contour, correlation, residual, convergence)`` axes.
     """
     import matplotlib.pyplot as plt
+    from matplotlib.cm import ScalarMappable
+    from matplotlib.colors import Normalize
 
     X_data = np.asarray(X_data)
     y_data = np.asarray(y_data)
@@ -406,8 +470,32 @@ def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
             "summary_plot_3d requires 3-D data: X_data with two input "
             "columns plus a 1-D output y_data.")
 
+    y_pred = model.predict(X_data)
+
+    if error_color:
+        abs_err = np.abs(y_data - y_pred)
+        # A shared norm is what makes the three panels comparable: the
+        # same shade means the same error wherever it appears.  Anchor
+        # the low end at zero so shade reads as magnitude, not rank.
+        err_max = float(abs_err.max())
+        err_norm = Normalize(vmin=0.0, vmax=err_max if err_max > 0 else 1.0)
+        point_kwargs = dict(c=abs_err, cmap=error_cmap, norm=err_norm)
+        data_kwargs = dict(data_color=abs_err, data_cmap=error_cmap,
+                           data_norm=err_norm)
+    else:
+        point_kwargs = {}
+        data_kwargs = {}
+
     fig = plt.figure(figsize=figsize)
-    gs = fig.add_gridspec(3, 2, width_ratios=(2.5, 1))
+    if error_color:
+        # A dedicated slim column keeps the shared colorbar clear of the
+        # panels; a figure-level colorbar would instead steal width from
+        # whichever axes it attached to.
+        gs = fig.add_gridspec(3, 3, width_ratios=(2.5, 1, 0.07))
+        ax_cbar = fig.add_subplot(gs[:, 2])
+    else:
+        gs = fig.add_gridspec(3, 2, width_ratios=(2.5, 1))
+        ax_cbar = None
     ax_contour = fig.add_subplot(gs[:, 0])
     ax_corr = fig.add_subplot(gs[0, 1])
     ax_resid = fig.add_subplot(gs[1, 1])
@@ -415,13 +503,18 @@ def summary_plot_3d(model, X_data, y_data, *, figsize=(12, 8),
 
     contour_plot_2d(model, X_data, y_data, ax=ax_contour,
                     xlabel=xlabel, ylabel=ylabel, zlabel=zlabel,
-                    **contour_kwargs)
+                    **data_kwargs, **contour_kwargs)
 
-    y_pred = model.predict(X_data)
-    correlation_plot(y_data, y_pred, ax=ax_corr)
-    residual_plot(y_data, y_pred, ax=ax_resid)
+    correlation_plot(y_data, y_pred, ax=ax_corr, **point_kwargs)
+    residual_plot(y_data, y_pred, ax=ax_resid, **point_kwargs)
 
     convergence_plot(model, ax=ax_conv, loss_threshold=loss_threshold)
+
+    if error_color:
+        cbar = fig.colorbar(
+            ScalarMappable(norm=err_norm, cmap=error_cmap), cax=ax_cbar)
+        cbar.ax.set_ylabel('|error| (data - prediction)', fontsize=9)
+        cbar.ax.tick_params(labelsize=8)
 
     for ax in (ax_corr, ax_resid, ax_conv):
         ax.tick_params(labelsize=8)

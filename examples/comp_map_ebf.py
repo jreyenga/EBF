@@ -127,6 +127,11 @@ if __name__ == "__main__":
     # --- Summary figure ---
     # Fitted surface, correlation, residuals and convergence in one
     # figure; extra keyword arguments are forwarded to contour_plot_2d.
+    # error_color (on by default) shades every data point by its absolute
+    # error on all three data panels, on one shared red scale with a
+    # colorbar down the right edge — so a bad point in the residual plot
+    # can be traced to where it sits on the map.  Pass False for flat
+    # white markers.
     fig_summary, _ = ebf.summary_plot_3d(
         model, X, eta,
         xlabel='Corrected Mass Flow, mdot',
@@ -134,6 +139,7 @@ if __name__ == "__main__":
         zlabel='Efficiency, eta',
         loss_threshold=0.05,
         show_nodes=True,
+        error_color=True,        # shade points by |error| ('Reds')
     )
 
     # Saved for the documentation — this is the figure the README uses to

@@ -164,18 +164,20 @@ a single figure. This is a compressor efficiency map: 56 operating points, 9 nod
 
 ![Compressor map fit summary](docs/assets/compressor_map_summary.png)
 
-*Left: the fitted efficiency surface, with training data (white) and the learned node
-positions (orange). Right, top to bottom: prediction vs data with R² = 0.9964; residuals
+*Left: the fitted efficiency surface, with training data and the learned node positions
+(orange triangles). Right, top to bottom: prediction vs data with R² = 0.9964; residuals
 vs prediction, RMSE 0.0083 — about 1.3% of the 0.184–0.843 efficiency range, with one point
 standing clearly apart; and the training loss, which hit its `loss_threshold` after 11,783 of
-the 80,000 requested steps. Reproduce with
-[`examples/comp_map_ebf.py`](examples/comp_map_ebf.py).*
+the 80,000 requested steps. Every data point is shaded by its absolute error on one shared
+red scale (colorbar, far right), so the same shade means the same error on all three panels.
+Reproduce with [`examples/comp_map_ebf.py`](examples/comp_map_ebf.py).*
 
 Read together these answer the three questions worth asking of any fit: **is it accurate**
 (correlation), **is it wrong anywhere in particular** (residuals), and **did it actually
 converge** (loss curve). The residual panel is the one that earns its keep — that single
 outlier near prediction 0.5 is invisible on the correlation plot, which compresses it against
-the 1:1 line.
+the 1:1 line. The shared error shading then places it: it is the darkest point on the map, in
+the low-flow, low-pressure-ratio corner where the data thins out.
 
 ### Inspecting what was learned
 
