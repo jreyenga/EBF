@@ -88,8 +88,8 @@ if __name__ == "__main__":
                 var_weight=0.01,
                 ellipsoid_weight=0.001,
                 loss_type=loss_type,
-                huber_delta='auto',    # only used by 'huber' (ADR-013)
-                tukey_c='auto',        # only used by 'tukey' (ADR-014)
+                huber_delta='auto',    # only used by 'huber' (ADR-013); '1.0sigma' downweights harder
+                tukey_c='auto',        # only used by 'tukey' (ADR-014); '3sigma' rejects harder
                 seed=42,
                 verbose=False,
             )

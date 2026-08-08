@@ -397,3 +397,48 @@ Shared internals were renamed generic (`thresh_t`, `refresh_thresh`,
 R² vs *clean* truth:** RMSE 0.9895, Huber-auto 0.9994, **Tukey-auto 0.9996** — with
 Tukey's final loss (0.046) also closest to the inlier noise floor since rejected points
 contribute only a constant.
+
+---
+
+## ADR-015: User-Settable Tuning Constant via `'<k>sigma'` Threshold Specs
+
+**Decision:** `huber_delta` and `tukey_c` accept a third form — a sigma-relative string
+such as `'2.5sigma'` — alongside the existing `'auto'` and fixed float. It keeps the full
+ADR-013 adaptive machinery (MAD estimate, `DELTA_EVERY` recalibration, `THRESHOLD_FLOOR`)
+and only substitutes the caller's K for the built-in `HUBER_K` / `TUKEY_K`. Parsing lives
+in `_parse_threshold(name, value, default_k) -> (adaptive, number)` in `ebf/train.py`,
+which is also the validator called from `_validate_fit_params`. `'auto'` remains the
+default and `'1.345sigma'` is exactly equivalent to it for Huber.
+
+**Rationale:** the two parameters conflated *policy* (adaptive vs fixed) with *value*.
+The knob a user actually wants to tune is K — it sets the efficiency/robustness
+trade-off, and lowering it is the standard response to heavy contamination — but K was
+hardcoded and reachable only by abandoning adaptivity for a fixed absolute threshold.
+That is the wrong trade: a fixed threshold in scaled data space is precisely the failure
+mode ADR-013 was written to eliminate, and for Tukey it also discards the annealing that
+keeps the non-convex loss out of bad basins (ADR-014). Users were being pushed toward the
+worst option to reach the knob they wanted.
+
+**Alternatives rejected:**
+- *Separate `huber_k` / `tukey_k` parameters* — simpler to implement, but widens an
+  already-large `fit()` signature by two and admits silently-ignored combinations
+  (`huber_k=2.0` with `huber_delta=0.4` does nothing, with no diagnostic).
+- *Tuple form `('auto', 2.5)`* — avoids parsing but reads poorly at the call site and
+  still needs its own validation branch.
+
+The string form makes invalid combinations unrepresentable, keeps every public signature
+unchanged, and reads the way engineers state the quantity ("three sigma"). Being
+stringly-typed is the accepted cost; the parser rejects malformed specs eagerly, at the
+same validation point as before.
+
+**Grammar:** `^\s*<float>\s*\*?\s*sigma\s*$` — whitespace- and `*`-tolerant, so
+`'3sigma'`, `'3 sigma'`, `'3 * sigma'`, and `'3.sigma'` are equivalent; scientific
+notation is accepted. K must be strictly positive. `'auto'` is matched before the regex.
+
+**Guidance (documented, not enforced):** for Tukey, K below ~2 can stall training for the
+same reason a small fixed `c` does. Not made a hard error — it is a legitimate setting on
+severely contaminated data, and the failure is visible in the loss trace.
+
+**Unchanged:** the fixed-float form, the default constants, `refresh_thresh()` (it already
+read K from the enclosing scope), the checkpoint format (thresholds are training-time
+hyperparameters and were never serialized), and every public signature.

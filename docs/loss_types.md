@@ -82,8 +82,9 @@ many there are. Raising `n_outliers` or `outlier_size` in
 
 !!! warning "Tukey is non-convex"
     A fixed, small `tukey_c` can reject most of the data at initialization and
-    stall training before it starts. Keep the default `tukey_c='auto'`, which
-    anneals from an effectively quadratic start as the residual scale tightens.
+    stall training before it starts. Prefer an adaptive setting — `'auto'` or a
+    `'<k>sigma'` spec — which anneals from an effectively quadratic start as the
+    residual scale tightens.
 
 ## Adaptive Thresholds
 
@@ -97,13 +98,40 @@ matters because the right threshold at step 0, when the surface is still far
 from the data, is very different from the right threshold at convergence. As
 the fit tightens, the threshold tracks it down.
 
+Each parameter accepts three forms:
+
+| Value | Threshold | Adapts during training? |
+|-------|-----------|-------------------------|
+| `'auto'` (default) | $K_\text{default}\,\hat\sigma$ — $1.345\hat\sigma$ for Huber, $4.685\hat\sigma$ for Tukey | Yes |
+| `'2.5sigma'` | $2.5\,\hat\sigma$ — your tuning constant | Yes |
+| `0.8` | fixed at 0.8, in scaled data space | No |
+
 ```python
-model.fit(X, y, loss_type='huber', huber_delta='auto')   # recommended
-model.fit(X, y, loss_type='huber', huber_delta=0.8)      # fixed threshold
+model.fit(X, y, loss_type='huber', huber_delta='auto')       # recommended
+model.fit(X, y, loss_type='huber', huber_delta='1.0sigma')   # adaptive, custom K
+model.fit(X, y, loss_type='huber', huber_delta=0.8)          # fixed threshold
 ```
 
-Pass a float only when you have a specific reason to pin the threshold; a lower
-value makes the model more aggressive about ignoring large residuals.
+The spec is whitespace- and `*`-tolerant: `'3sigma'`, `'3 sigma'`, and
+`'3 * sigma'` are all the same thing. `'1.345sigma'` is exactly equivalent to
+`'auto'` for Huber.
+
+### Choosing K
+
+$K$ sets the trade-off between efficiency on clean Gaussian noise and resistance
+to contamination. **Lower $K$ downweights more aggressively.**
+
+| Loss | Default $K$ | More aggressive | Effect |
+|------|------------:|-----------------|--------|
+| `'huber'` | 1.345 (95% efficiency, ~18% of points in the linear zone) | `'1.0sigma'` | More residuals treated linearly — use under heavy contamination |
+| `'tukey'` | 4.685 (95% efficiency) | `'3sigma'` | Rejects considerably more; a common choice when outliers are numerous |
+
+Below about $K = 2$ for Tukey the annealing argument starts to break down and
+training can stall, for the same reason a small fixed `c` does.
+
+Pass a **float** only when you have a specific reason to pin the threshold in
+absolute terms — e.g. you know the instrument's noise floor in scaled units and
+want it held there regardless of how the fit evolves.
 
 !!! note
     `huber_delta` is only read when `loss_type='huber'`, and `tukey_c` only when

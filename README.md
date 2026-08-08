@@ -257,8 +257,8 @@ Training (`model.fit(...)`):
 | `var_weight` | 0.2 | Node spread regularization — higher values produce smoother fits |
 | `ellipsoid_weight` | 0.0 | Ellipsoid shape penalty — the explicit smoothness knob; 0 disables it |
 | `loss_type` | `'rmse'` | `'rmse'`, `'huber'` (downweights outliers), or `'tukey'` (rejects outliers) |
-| `huber_delta` | `'auto'` | Huber threshold — `'auto'` tracks the residual noise floor; a float fixes it |
-| `tukey_c` | `'auto'` | Tukey rejection point — residuals beyond it exert zero pull; keep `'auto'` |
+| `huber_delta` | `'auto'` | Huber threshold — `'auto'` (`1.345σ`) tracks the residual noise floor; `'<k>sigma'` sets K yourself; a float fixes it |
+| `tukey_c` | `'auto'` | Tukey rejection point — residuals beyond it exert zero pull; `'auto'` (`4.685σ`) or e.g. `'3sigma'` to reject harder |
 | `val_fraction` | 0.0 | Held-out fraction for early stopping; 0 disables. Needs ~50+ points |
 | `patience` | 10 | Validation evaluations (1 per 100 steps) without improvement before stopping |
 | `loss_threshold` | None | Stop early once the training loss reaches this value; `None` disables |

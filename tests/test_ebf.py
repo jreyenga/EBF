@@ -164,11 +164,31 @@ class TestFit:
               verbose=False)
         assert m._is_fitted is True
 
+    def test_fit_huber_delta_sigma_spec(self):
+        """'<k>sigma' keeps the adaptive threshold with a custom K (ADR-015)."""
+        x, y = _make_1d_data(n=20)
+        m = ebf.EBF(n_nodes=6)
+        m.fit(x, y, steps=500, loss_type='huber', huber_delta='1.0sigma',
+              verbose=False)
+        assert m._is_fitted is True
+        assert np.all(np.isfinite(m.predict(x)))
+
+    def test_fit_tukey_c_sigma_spec(self):
+        x, y = _make_1d_data(n=20)
+        m = ebf.EBF(n_nodes=6)
+        m.fit(x, y, steps=500, loss_type='tukey', tukey_c='3sigma',
+              verbose=False)
+        assert m._is_fitted is True
+        assert np.all(np.isfinite(m.predict(x)))
+
     def test_fit_huber_delta_invalid(self):
         x, y = _make_1d_data(n=20)
         m = ebf.EBF(n_nodes=6)
         with pytest.raises(ValueError, match="huber_delta must be"):
             m.fit(x, y, steps=100, loss_type='huber', huber_delta='bogus',
+                  verbose=False)
+        with pytest.raises(ValueError, match="huber_delta must be"):
+            m.fit(x, y, steps=100, loss_type='huber', huber_delta='0sigma',
                   verbose=False)
         with pytest.raises(ValueError, match="huber_delta must be"):
             m.fit(x, y, steps=100, loss_type='huber', huber_delta=-1.0,

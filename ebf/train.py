@@ -8,6 +8,7 @@ definition and optimizer setup exist in exactly one place.
 
 run() trains the model on input data and saves a checkpoint.
 """
+import re
 import warnings
 
 import tensorflow as tf
@@ -23,7 +24,8 @@ from ebf.basis_functions import DEFAULT_BASIS
 VAL_EVERY = 100
 
 # Adaptive robust-loss threshold (ADR-013/ADR-014): steps between
-# recalibrations from the current residuals when the threshold is 'auto'.
+# recalibrations from the current residuals when the threshold is adaptive
+# ('auto' or a '<k>sigma' spec).
 DELTA_EVERY = 100
 
 # threshold = K * sigma_hat, with sigma_hat = MAD_TO_SIGMA * MAD(residuals).
@@ -32,23 +34,47 @@ DELTA_EVERY = 100
 # sigma.  HUBER_K = 1.345 is the classical tuning constant that retains 95%
 # efficiency on Gaussian noise (~18% of points in the linear zone);
 # TUKEY_K = 4.685 is its biweight counterpart (also 95% efficiency, with
-# influence redescending to zero at the threshold).  The floor keeps the
-# threshold from collapsing to 0 on noise-free data, where Huber would
-# degenerate to pure L1 and Tukey would reject everything.
+# influence redescending to zero at the threshold).  These are the K used by
+# 'auto'; a '<k>sigma' spec substitutes the user's K (ADR-015).  The floor
+# keeps the threshold from collapsing to 0 on noise-free data, where Huber
+# would degenerate to pure L1 and Tukey would reject everything.
 HUBER_K = 1.345
 TUKEY_K = 4.685
 MAD_TO_SIGMA = 1.4826
 THRESHOLD_FLOOR = 1e-3
 
+# Sigma-relative threshold spec (ADR-015): '2.5sigma', '2.5 * sigma', '3sigma'.
+_SIGMA_SPEC = re.compile(
+    r'^\s*((?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*\*?\s*sigma\s*$')
 
-def _validate_threshold(name, value):
+
+def _parse_threshold(name, value, default_k):
+    """Resolve a robust-loss threshold spec into (adaptive, number).
+
+    Three accepted forms (ADR-013/014/015)::
+
+        'auto'      -> (True,  default_k)  K * sigma_hat, classical constant
+        '2.5sigma'  -> (True,  2.5)        K * sigma_hat, caller's constant
+        0.4         -> (False, 0.4)        fixed threshold, scaled data space
+
+    When *adaptive* is True the second element is the tuning constant K
+    multiplying the MAD-based sigma estimate; when it is False the second
+    element is the fixed threshold itself.
+    """
     if isinstance(value, str):
-        if value != 'auto':
-            raise ValueError(
-                f"{name} must be 'auto' or a positive number, got '{value}'")
-    elif not value > 0:
+        if value.strip() == 'auto':
+            return True, default_k
+        match = _SIGMA_SPEC.match(value)
+        if match is not None and float(match.group(1)) > 0.0:
+            return True, float(match.group(1))
         raise ValueError(
-            f"{name} must be 'auto' or a positive number, got {value}")
+            f"{name} must be 'auto', a sigma-relative spec such as "
+            f"'2.5sigma', or a positive number, got '{value}'")
+    if not value > 0:
+        raise ValueError(
+            f"{name} must be 'auto', a sigma-relative spec such as "
+            f"'2.5sigma', or a positive number, got {value}")
+    return False, float(value)
 
 
 def _validate_fit_params(loss_type, val_fraction=0.0, patience=10,
@@ -57,8 +83,8 @@ def _validate_fit_params(loss_type, val_fraction=0.0, patience=10,
     if loss_type not in ('huber', 'rmse', 'tukey'):
         raise ValueError(
             f"loss_type must be 'rmse', 'huber', or 'tukey', got '{loss_type}'")
-    _validate_threshold('huber_delta', huber_delta)
-    _validate_threshold('tukey_c', tukey_c)
+    _parse_threshold('huber_delta', huber_delta, HUBER_K)
+    _parse_threshold('tukey_c', tukey_c, TUKEY_K)
     if not 0.0 <= val_fraction < 1.0:
         raise ValueError(f"val_fraction must be in [0, 1), got {val_fraction}")
     if patience < 1:
@@ -88,16 +114,21 @@ def _train(model, In, Out, *, steps, lr, var_weight,
                      ``0.0`` disables the penalty
     loss_type      : str — ``'rmse'``, ``'huber'`` (ADR-009/013), or
                      ``'tukey'`` (ADR-014, redescending — rejects outliers)
-    huber_delta    : ``'auto'`` or float — Huber threshold in scaled data
-                     space.  ``'auto'`` (default, ADR-013) recalibrates the
-                     threshold every ``DELTA_EVERY`` steps from the current
-                     residuals (``1.345 * 1.4826 * MAD``), so it tracks the
-                     noise floor as the fit tightens; a float fixes it
-    tukey_c        : ``'auto'`` or float — Tukey biweight rejection point in
-                     scaled data space (ADR-014).  ``'auto'`` (default) uses
+    huber_delta    : ``'auto'``, ``'<k>sigma'`` or float — Huber threshold.
+                     ``'auto'`` (default, ADR-013) recalibrates the threshold
+                     every ``DELTA_EVERY`` steps from the current residuals
+                     (``1.345 * 1.4826 * MAD``), so it tracks the noise floor
+                     as the fit tightens.  ``'<k>sigma'`` (e.g. ``'1.0sigma'``,
+                     ADR-015) does the same with the caller's tuning constant
+                     in place of 1.345.  A float fixes the threshold in scaled
+                     data space
+    tukey_c        : ``'auto'``, ``'<k>sigma'`` or float — Tukey biweight
+                     rejection point (ADR-014).  ``'auto'`` (default) uses
                      ``4.685 * 1.4826 * MAD`` with the same recalibration
-                     cadence; a float fixes it (not recommended — 'auto'
-                     anneals from an effectively quadratic start, a fixed
+                     cadence; ``'<k>sigma'`` (e.g. ``'3sigma'``, ADR-015)
+                     substitutes the caller's constant.  A float fixes it in
+                     scaled data space (not recommended — the adaptive forms
+                     anneal from an effectively quadratic start, a fixed
                      small c can reject most points at initialization and
                      stall training)
     loss_threshold : float or None — stop early when the training loss
@@ -175,13 +206,18 @@ def _train(model, In, Out, *, steps, lr, var_weight,
     # outlier resistance.
     robust = loss_type in ('huber', 'tukey')
     if robust:
-        thresh_param = huber_delta if loss_type == 'huber' else tukey_c
-        thresh_k = HUBER_K if loss_type == 'huber' else TUKEY_K
-        adaptive_thresh = isinstance(thresh_param, str)
+        if loss_type == 'huber':
+            thresh_param, default_k, name = huber_delta, HUBER_K, 'huber_delta'
+        else:
+            thresh_param, default_k, name = tukey_c, TUKEY_K, 'tukey_c'
+        # adaptive -> number is the tuning constant K; fixed -> the threshold
+        adaptive_thresh, number = _parse_threshold(name, thresh_param,
+                                                   default_k)
         if adaptive_thresh:
+            thresh_k = number
             thresh_t = tf.Variable(1.0, trainable=False, dtype=tf.float32)
         else:
-            thresh_t = tf.constant(thresh_param, dtype=tf.float32)
+            thresh_t = tf.constant(number, dtype=tf.float32)
     else:
         adaptive_thresh = False
 
@@ -368,16 +404,22 @@ def run(data, n_nodes,
                       get linear treatment; ADR-009/013), or ``'tukey'``
                       (redescending — outliers beyond the rejection point exert
                       zero pull; ADR-014)
-    huber_delta     : ``'auto'`` or float — Huber threshold in scaled data space.
+    huber_delta     : ``'auto'``, ``'<k>sigma'`` or float — Huber threshold.
                       ``'auto'`` (default) recalibrates the threshold every 100
-                      steps from the current residual spread so roughly the
-                      largest ~18% of residuals get linear (outlier-resistant)
-                      treatment; a float fixes the threshold instead.  See ADR-013
-    tukey_c         : ``'auto'`` or float — Tukey biweight rejection point in
-                      scaled data space; residuals beyond it are ignored entirely.
+                      steps from the current residual spread (``1.345 * sigma``)
+                      so roughly the largest ~18% of residuals get linear
+                      (outlier-resistant) treatment.  ``'<k>sigma'`` — e.g.
+                      ``'1.0sigma'`` — keeps that adaptivity but sets the tuning
+                      constant yourself (lower K = more aggressive
+                      downweighting).  A float fixes the threshold in scaled
+                      data space instead.  See ADR-013/015
+    tukey_c         : ``'auto'``, ``'<k>sigma'`` or float — Tukey biweight
+                      rejection point; residuals beyond it are ignored entirely.
                       ``'auto'`` (default, recommended) tracks the residual noise
                       floor at ``4.685 * sigma``, annealing from an effectively
-                      quadratic start.  See ADR-014
+                      quadratic start; ``'<k>sigma'`` — e.g. ``'3sigma'`` —
+                      rejects more aggressively while keeping the annealing.  A
+                      float fixes it in scaled data space.  See ADR-014/015
     path            : str — directory for checkpoint files (default: './')
     filename        : str — checkpoint filename stem (default: 'my-model')
     train_steps     : int — number of optimizer steps (default: 60000)

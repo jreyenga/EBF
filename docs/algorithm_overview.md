@@ -89,14 +89,18 @@ The loss function has up to three parts:
    every residual, so a point that's 10x noisier than the rest becomes 100x
    more influential. Huber caps that influence at 10x.
 
-   By default (`huber_delta='auto'`) the threshold is recalibrated every 100
-   steps from the spread of the current residuals (a robust median-based
-   estimate that outliers cannot corrupt), so it tracks the noise floor as
-   the fit tightens and roughly the largest ~18% of residuals get the linear,
-   outlier-resistant treatment. The Huber term is also reported on the same
-   scale as RMSE (it equals RMSE exactly when no residual exceeds the
-   threshold), so `loss_threshold` and the regularization weights don't need
-   retuning when you switch loss types.
+   By default (`huber_delta='auto'`, i.e. `1.345·σ`) the threshold is
+   recalibrated every 100 steps from the spread of the current residuals (a
+   robust median-based estimate that outliers cannot corrupt), so it tracks the
+   noise floor as the fit tightens and roughly the largest ~18% of residuals get
+   the linear, outlier-resistant treatment. If you want a different
+   efficiency/robustness trade-off, pass a sigma-relative spec such as
+   `huber_delta='1.0sigma'` — the threshold stays adaptive, only the tuning
+   constant changes. A plain float pins the threshold in scaled data space
+   instead. The Huber term is also reported on the same scale as RMSE (it
+   equals RMSE exactly when no residual exceeds the threshold), so
+   `loss_threshold` and the regularization weights don't need retuning when you
+   switch loss types.
 
    For data containing *erroneous* points (bad sensor readings) rather than
    merely noisy ones, `loss_type='tukey'` goes further: the Tukey biweight
@@ -109,7 +113,8 @@ The loss function has up to three parts:
    `4.685·σ` with the same recalibration cadence and RMSE-comparable
    scaling; starting from an effectively quadratic state and tightening
    gradually also keeps the (non-convex) loss from rejecting good data
-   early in training.
+   early in training. `tukey_c='3sigma'` rejects more aggressively while
+   preserving that annealing.
 
    ![Loss and influence curves for squared error, Huber, and Tukey biweight](assets/loss_functions.png)
 

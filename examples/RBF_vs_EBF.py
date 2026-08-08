@@ -40,7 +40,8 @@ if __name__ == "__main__":
         var_weight=0.01,         # light node-spread regularization
         ellipsoid_weight=0.001,  # light smoothness penalty (ADR-011)
         loss_type='huber',       # robust to any rough spots (ADR-009)
-        huber_delta='auto',      # threshold tracks the residual noise floor (ADR-013)
+        huber_delta='auto',      # threshold tracks the residual noise floor at 1.345·sigma (ADR-013);
+                                 #   '<k>sigma' sets K yourself, a float pins it (ADR-015)
         seed=42,
     )
     nodes = model.get_nodes()

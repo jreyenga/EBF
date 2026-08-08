@@ -358,3 +358,33 @@ Work in this period was not logged at the time. Summary from git history:
 - All six example scripts verified end-to-end headlessly (Agg backend); comp_map
   save/load roundtrip and CSV export confirmed. Note: scenario labels must stay ASCII —
   Windows cp1252 console can't print `σ` (crashed the first loss_comparison run)
+
+---
+
+## Session 12 — 2026-08-08
+
+**Work done (ADR-015 — user-settable robust-loss tuning constant):**
+- `huber_delta` / `tukey_c` gained a third accepted form: a sigma-relative spec such as
+  `'2.5sigma'`. It keeps the full ADR-013 adaptive machinery and only replaces the
+  built-in `HUBER_K` / `TUKEY_K`. Motivation: the parameters conflated *policy*
+  (adaptive vs fixed) with *value*, so the one knob users actually want to tune — K —
+  was reachable only by giving up adaptivity for a fixed absolute threshold, i.e. the
+  exact failure mode ADR-013 was written to remove
+- New `_parse_threshold(name, value, default_k) -> (adaptive, number)` in `ebf/train.py`
+  serves as both parser and validator; `_validate_threshold` removed and
+  `_validate_fit_params` now calls the parser. `refresh_thresh()` needed no change — it
+  already read K from the enclosing scope
+- Grammar `^\s*<float>\s*\*?\s*sigma\s*$`: whitespace- and `*`-tolerant, accepts
+  scientific notation and both `'3.sigma'` and `'.5sigma'`. K must be > 0. Note the
+  first regex used `\d*\.?\d+`, which rejected the trailing-dot form `'3.sigma'` —
+  widened to `(?:\d+\.?\d*|\.\d+)`
+- No public signature changed and the checkpoint format is untouched (these thresholds
+  are training-time hyperparameters and were never serialized)
+- Tests: `TestParseThreshold` (23 fast parser cases, no training), end-to-end sigma-spec
+  fits through both `run()` and `EBF.fit()`, and an equivalence test asserting
+  `'1.345sigma'` reproduces `'auto'` exactly for Huber
+- Docs updated: ADR-015, `docs/loss_types.md` (three-form table + "Choosing K" guidance),
+  `algorithm_overview.md`, `docs/examples/*.md`, README parameter table, CHANGELOG,
+  CLAUDE.md, and the four examples that pass these parameters
+- Examples were **not** re-run and figures were **not** regenerated: the algorithm is
+  unchanged for every pre-existing input, and all four example edits are comments

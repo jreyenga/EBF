@@ -55,8 +55,9 @@ model.fit(
     var_weight=0.01,         # node spread regularization strength
     ellipsoid_weight=0.001,  # ellipsoid shape penalty — explicit smoothness knob (ADR-011)
     loss_type='huber',       # 'rmse' (default), 'huber', or 'tukey'
-    huber_delta='auto',      # 'auto' (default) tracks the residual noise floor
-    tukey_c='auto',          # Tukey rejection point — 'auto' (default) recommended
+    huber_delta='auto',      # 'auto' (default) tracks the residual noise floor at
+                             #   1.345·sigma; '<k>sigma' sets K; a float pins it
+    tukey_c='auto',          # Tukey rejection point — 'auto' (default) = 4.685·sigma
     val_fraction=0.0,        # held-out fraction for early stopping (0 = off)
     patience=10,             # val evaluations without improvement before stopping
     verbose=True,            # print training progress every 100 steps
@@ -90,15 +91,17 @@ model.fit(
   beyond the Tukey rejection point exert zero pull and are effectively
   discarded.
 - `huber_delta` — Controls the threshold where Huber loss switches from
-  quadratic to linear. The default `'auto'` recalibrates it every 100 steps
-  from the current residual spread, so roughly the largest ~18% of residuals
-  get linear (outlier-resistant) treatment as the fit tightens. Pass a float
-  (in scaled data space) to fix the threshold; lower values make the model
-  more aggressive at ignoring outliers.
+  quadratic to linear. The default `'auto'` (= `1.345·σ`) recalibrates it every
+  100 steps from the current residual spread, so roughly the largest ~18% of
+  residuals get linear (outlier-resistant) treatment as the fit tightens. To
+  downweight more aggressively while keeping that adaptivity, pass a
+  sigma-relative spec such as `'1.0sigma'`. A float (in scaled data space) fixes
+  the threshold outright. See [Loss Types](../loss_types.md#adaptive-thresholds).
 - `tukey_c` — The Tukey biweight rejection point (only used with
-  `loss_type='tukey'`). Keep the default `'auto'`: it tracks the residual
-  noise floor at `4.685·σ` and anneals from an effectively quadratic start,
-  which protects against rejecting good data early in training.
+  `loss_type='tukey'`). Keep an adaptive setting: the default `'auto'` tracks the
+  residual noise floor at `4.685·σ` and anneals from an effectively quadratic
+  start, which protects against rejecting good data early in training. `'3sigma'`
+  rejects considerably harder while keeping that annealing.
 - `steps` — More steps gives the optimizer more time to converge. Watch the
   loss printout — if it's still decreasing at the end, increase `steps`.
 - `loss_threshold` — Stops training early once the training loss is low enough.

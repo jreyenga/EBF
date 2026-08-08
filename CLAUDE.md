@@ -13,7 +13,7 @@ migration is complete and all legacy TF1 files have been deleted).
 - **Phase 3 complete** — TF1 → TF2 migration: `EBFModel(tf.Module)`, `GradientTape` training, `tf.train.Checkpoint` + JSON sidecar
 - **Phase 4 complete** — API Polish: `EBF` class with fit/predict/get_nodes/save/load, docstrings
 - **Phase 5 complete** — MkDocs documentation site: algorithm guide, basis function gallery, API reference, examples
-- **Post-Phase 5** — Smoothness Phase S1 partially adopted: Huber loss kept (ADR-009), L2 amplitude penalty rejected and `smooth_weight` removed (ADR-010); Phase S3 ellipsoid shape penalty added (`ellipsoid_weight`, ADR-011); Phase S2 early stopping added (`val_fraction`/`patience`, ADR-012); adaptive Huber threshold `huber_delta='auto'` + RMSE-comparable Huber scaling (ADR-013); Tukey biweight loss `loss_type='tukey'` with adaptive rejection point `tukey_c='auto'` (ADR-014); `ebf/viz.py` visualization utilities added; legacy TF1 files deleted for distribution
+- **Post-Phase 5** — Smoothness Phase S1 partially adopted: Huber loss kept (ADR-009), L2 amplitude penalty rejected and `smooth_weight` removed (ADR-010); Phase S3 ellipsoid shape penalty added (`ellipsoid_weight`, ADR-011); Phase S2 early stopping added (`val_fraction`/`patience`, ADR-012); adaptive Huber threshold `huber_delta='auto'` + RMSE-comparable Huber scaling (ADR-013); Tukey biweight loss `loss_type='tukey'` with adaptive rejection point `tukey_c='auto'` (ADR-014); user-settable tuning constant via `'<k>sigma'` threshold specs (ADR-015); `ebf/viz.py` visualization utilities added; legacy TF1 files deleted for distribution
 - **Active roadmap** — `docs/design/ROADMAP.md` (open: P4 performance, P5 infrastructure/CI, P5b higher-dimensional examples)
 
 ## Key Files
@@ -60,8 +60,9 @@ migration is complete and all legacy TF1 files have been deleted).
 - Default epsilon: `1e-8` (numerical stability in basis functions)
 - Default `var_weight`: `0.2` (node spread regularization strength)
 - Default `ellipsoid_weight`: `0.0` (ellipsoid shape penalty off — the explicit smoothness knob, ADR-011)
-- Default `huber_delta`: `'auto'` (adaptive, residual-calibrated via MAD; only used with `loss_type='huber'`, ADR-013)
+- Default `huber_delta`: `'auto'` (adaptive, residual-calibrated via MAD, `1.345·σ̂`; only used with `loss_type='huber'`, ADR-013)
 - Default `tukey_c`: `'auto'` (adaptive Tukey rejection point, `4.685·σ̂`; only used with `loss_type='tukey'`, ADR-014)
+- Both thresholds also accept `'<k>sigma'` (e.g. `'3sigma'`) — adaptive with a caller-set K — or a float for a fixed threshold (ADR-015)
 - Default `val_fraction`: `0.0` (validation split / early stopping off; `patience=10`, ADR-012 — needs ~50+ points)
 - Tensor shape comments use `(n_points, n_nodes, n_dims)` notation — see `docs/design/CONVENTIONS.md`
 - Status, open work and planned features: `docs/design/ROADMAP.md`

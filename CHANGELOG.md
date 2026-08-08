@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Sigma-relative threshold specs.** `huber_delta` and `tukey_c` now accept a
+  `'<k>sigma'` string (e.g. `'1.0sigma'`, `'3 * sigma'`) in addition to `'auto'` and a
+  fixed float. This keeps the adaptive, residual-calibrated threshold of `'auto'` while
+  letting you set the tuning constant K yourself — previously the only way to change K
+  was to give up adaptivity entirely and pin an absolute threshold. `'auto'` remains the
+  default and is unchanged (`1.345σ` for Huber, `4.685σ` for Tukey). See ADR-015.
+
 ## [0.1.0] — 2026-08-07
 
 First public release.

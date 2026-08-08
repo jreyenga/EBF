@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 import ebf
+from ebf.train import HUBER_K, TUKEY_K, _parse_threshold
 
 
 def _r2_score(y_true, y_pred):
@@ -78,6 +79,41 @@ class TestTrainPredict:
             ebf.run(data, n_nodes=6, loss_type='huber',
                     huber_delta='bogus', train_steps=10)
 
+    def test_huber_delta_sigma_spec(self, tmp_path):
+        """A '<k>sigma' spec stays adaptive with the caller's K (ADR-015)."""
+        data = self._make_1d_data(n=20)
+        Scale, Offset, file = ebf.run(
+            data, n_nodes=6, loss_type='huber', huber_delta='1.0sigma',
+            train_steps=2000,
+            path=str(tmp_path) + "/", filename="huber_sigma"
+        )
+        Out, _ = ebf.run_points(data[:, :-1], Scale, Offset, file)
+        assert np.all(np.isfinite(Out))
+
+    def test_tukey_c_sigma_spec(self, tmp_path):
+        data = self._make_1d_data(n=20)
+        Scale, Offset, file = ebf.run(
+            data, n_nodes=6, loss_type='tukey', tukey_c='3sigma',
+            train_steps=2000,
+            path=str(tmp_path) + "/", filename="tukey_sigma"
+        )
+        Out, _ = ebf.run_points(data[:, :-1], Scale, Offset, file)
+        assert np.all(np.isfinite(Out))
+
+    def test_sigma_spec_matches_auto(self, tmp_path):
+        """'1.345sigma' is exactly 'auto' for Huber — same K, same result."""
+        data = self._make_1d_data(n=20)
+        results = []
+        for i, delta in enumerate(('auto', f'{HUBER_K}sigma')):
+            Scale, Offset, file = ebf.run(
+                data, n_nodes=6, loss_type='huber', huber_delta=delta,
+                train_steps=500, seed=0, verbose=False,
+                path=str(tmp_path) + "/", filename=f"equiv{i}"
+            )
+            Out, _ = ebf.run_points(data[:, :-1], Scale, Offset, file)
+            results.append(Out)
+        np.testing.assert_allclose(results[0], results[1], rtol=1e-5)
+
     def test_tukey_auto_c(self, tmp_path):
         """loss_type='tukey' with the default adaptive rejection point (ADR-014)."""
         data = self._make_1d_data(n=20)
@@ -126,6 +162,42 @@ class TestTrainPredict:
         )
         Out, _ = ebf.run_points(data[:, :-1], Scale, Offset, file)
         assert np.all(np.isfinite(Out)), f"Non-finite output with basis '{basis}'"
+
+
+class TestParseThreshold:
+    """Unit tests for the threshold spec parser (ADR-015)."""
+
+    @pytest.mark.parametrize("spec, expected_k", [
+        ('auto', HUBER_K),
+        ('2.5sigma', 2.5),
+        ('2.5 sigma', 2.5),
+        ('2.5*sigma', 2.5),
+        ('2.5 * sigma', 2.5),
+        ('  3sigma  ', 3.0),
+        ('3.sigma', 3.0),
+        ('.5sigma', 0.5),
+        ('1e-1sigma', 0.1),
+    ])
+    def test_adaptive_forms(self, spec, expected_k):
+        adaptive, k = _parse_threshold('huber_delta', spec, HUBER_K)
+        assert adaptive is True
+        assert k == pytest.approx(expected_k)
+
+    def test_auto_uses_loss_specific_default(self):
+        assert _parse_threshold('tukey_c', 'auto', TUKEY_K) == (True, TUKEY_K)
+
+    def test_fixed_float(self):
+        adaptive, value = _parse_threshold('huber_delta', 0.4, HUBER_K)
+        assert adaptive is False
+        assert value == pytest.approx(0.4)
+
+    @pytest.mark.parametrize("spec", [
+        'bogus', 'sigma', '0sigma', '-2sigma', '2 sigmas', 'auto sigma',
+        'autos', '2.5 std', '', 0.0, -1.0, float('nan'),
+    ])
+    def test_rejects_invalid(self, spec):
+        with pytest.raises(ValueError, match="huber_delta must be"):
+            _parse_threshold('huber_delta', spec, HUBER_K)
 
 
 class TestTrainingHistory:

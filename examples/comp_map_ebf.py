@@ -70,8 +70,11 @@ if __name__ == "__main__":
         var_weight=0.01,         # node spread regularization strength — also the primary smoothing knob
         ellipsoid_weight=0.001,  # ellipsoid shape penalty — explicit smoothness knob, 0 disables (ADR-011)
         loss_type='huber',       # 'rmse' (default), 'huber' (downweights outliers), or 'tukey' (rejects outliers)
-        huber_delta='auto',      # 'auto' tracks the residual noise floor (ADR-013); a float fixes the threshold
-        tukey_c='auto',          # Tukey rejection point (ADR-014) — keep 'auto'; only used with loss_type='tukey'
+        huber_delta='auto',      # 'auto' = 1.345·sigma, tracks the residual noise floor (ADR-013);
+                                 #   '<k>sigma' (e.g. '1.0sigma') sets K yourself, still adaptive (ADR-015);
+                                 #   a float fixes the threshold in scaled data space
+        tukey_c='auto',          # Tukey rejection point (ADR-014) — 'auto' = 4.685·sigma, or '3sigma' to
+                                 #   reject harder; only used with loss_type='tukey'
         val_fraction=0.0,        # held-out fraction for early stopping — 0 disables; needs ~50+ points (ADR-012)
         patience=10,             # stop after this many val evaluations (1 per 100 steps) without improvement
         verbose=True,            # print training progress every 100 steps

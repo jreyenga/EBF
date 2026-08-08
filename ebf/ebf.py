@@ -100,22 +100,26 @@ class EBF:
             redescending — residuals beyond the rejection point exert zero
             pull on the surface, so gross outliers are effectively
             discarded.  See ADR-009/013/014.
-        huber_delta : ``'auto'`` or float, optional
-            Huber loss threshold in scaled data space.  Default is
-            ``'auto'`` (ADR-013): the threshold is recalibrated every 100
-            steps from the current residual spread (a robust MAD estimate),
-            so roughly the largest ~18% of residuals get linear,
-            outlier-resistant treatment as the fit tightens.  Pass a float
-            to fix the threshold instead.  Only used when
-            ``loss_type='huber'``.
-        tukey_c : ``'auto'`` or float, optional
-            Tukey biweight rejection point in scaled data space.  Default
-            is ``'auto'`` (ADR-014, recommended): ``4.685 * sigma`` with
-            the same MAD recalibration, which anneals from an effectively
-            quadratic start — important because the Tukey loss is
-            non-convex and a fixed small ``c`` can reject most points at
-            initialization and stall training.  Only used when
-            ``loss_type='tukey'``.
+        huber_delta : ``'auto'``, ``'<k>sigma'`` or float, optional
+            Huber loss threshold.  Default is ``'auto'`` (ADR-013):
+            ``1.345 * sigma``, recalibrated every 100 steps from the
+            current residual spread (a robust MAD estimate), so roughly
+            the largest ~18% of residuals get linear, outlier-resistant
+            treatment as the fit tightens.  A sigma-relative spec such as
+            ``'1.0sigma'`` keeps that adaptivity but sets the tuning
+            constant yourself — lower K downweights more aggressively
+            (ADR-015).  A float fixes the threshold in scaled data space
+            instead.  Only used when ``loss_type='huber'``.
+        tukey_c : ``'auto'``, ``'<k>sigma'`` or float, optional
+            Tukey biweight rejection point.  Default is ``'auto'``
+            (ADR-014, recommended): ``4.685 * sigma`` with the same MAD
+            recalibration, which anneals from an effectively quadratic
+            start — important because the Tukey loss is non-convex and a
+            fixed small ``c`` can reject most points at initialization and
+            stall training.  A sigma-relative spec such as ``'3sigma'``
+            rejects more aggressively while keeping that annealing
+            (ADR-015).  A float fixes it in scaled data space.  Only used
+            when ``loss_type='tukey'``.
         val_fraction : float, optional
             Fraction of points held out as a validation set for early
             stopping (see ADR-012).  Default is ``0.0`` — no split,

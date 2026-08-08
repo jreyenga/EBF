@@ -38,7 +38,7 @@ model.fit(
     var_weight=0.01,         # light node-spread regularization
     ellipsoid_weight=0.001,  # light smoothness penalty (ADR-011)
     loss_type='huber',
-    huber_delta='auto',
+    huber_delta='auto',      # 1.345·sigma, adaptive; '<k>sigma' sets K yourself
     seed=42,
 )
 
